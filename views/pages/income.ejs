@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Voice Recorder</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        /* Body */
+        body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        }
+
+        /* Header */
+        header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background-color: #2c3e50;
+        padding: 20px;
+        color: #fff;
+        }
+
+        nav ul {
+        list-style: none;
+        display: flex;
+        margin: 0;
+        padding: 0;
+        }
+
+        nav li {
+        margin-left: 20px;
+        }
+
+        nav a {
+        color: #fff;
+        text-decoration: none;
+        }
+
+        /* Main */
+        main {
+        padding: 50px;
+        }
+
+        h1 {
+        text-align: center;
+        font-size: 36px;
+        margin-bottom: 50px;
+        }
+
+        .recorder {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        }
+
+        .controls {
+        display: flex;
+        align-items: center;
+        margin-bottom: 20px;
+        }
+
+        button {
+        font-size: 18px;
+        padding: 10px 20px;
+        margin-right: 10px;
+        background-color: #3498db;
+        border: none;
+        border-radius: 5px;
+        color: #fff;
+        cursor: pointer;
+        transition: all 0.2s ease-in-out;
+        }
+
+        button:hover {
+        background-color: #2980b9;
+        }
+
+        button:active {
+        transform: translateY(1px);
+        }
+
+        #timer {
+        font-size: 24px;
+        margin: 0;
+        margin-left: auto;
+        }
+
+        canvas {
+        background-color: #fff;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        }
+
+        /* Footer */
+        footer {
+        background-color: #34495e;
+        color: #fff;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 20px;
+        }
+
+        .social-media {
+        list-style: none;
+        display: flex;
+        margin: 0;
+        padding: 0;
+        }
+
+        .social-media li {
+        margin-left: 20px;
+        }
+
+        .social-media a {
+        color: #fff;
+        text-decoration: none;
+        }
+
+        /* Responsive */
+        @media screen and (max-width: 768px) {
+        header {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        nav {
+            margin-top: 20px;
+        }
+
+        main {
+            padding: 20px;
+        }
+
+        h1 {
+            font-size: 24px;
+        }
+
+        canvas {
+            width: 100%;
+        }
+
+        footer {
+            flex-direction: column;
+            align-items: center;
+        }
+        }
+
+    </style>
+  </head>
+  <body>
+    <header>
+      <img src="logo.png" alt="Logo">
+      <nav>
+        <ul>
+            <li><a href="/login">Login</a></li>
+            <li><a href="/sign-up">Sign Up</a></li>
+        </ul>
+      </nav>
+    </header>
+    <main>
+      <h1>Voice Recorder</h1>
+      <div>
+        <label for="name-input">Name:</label>
+        <input type="text" id="name-input">
+      </div>
+      <div>
+        <label for="phone-input">Phone Number:</label>
+        <input type="number" id="phone-input">
+      </div>
+      <div class="recorder">
+        <div class="controls">
+          <button id="record-btn"><i class="fas fa-microphone"></i>Record</button>
+          <button id="stop-btn"><i class="fas fa-stop"></i>Stop</button>
+          <button id="play-btn"><i class="fas fa-play"></i>Send</button>
+          <button id="save-btn"><i class="fas fa-save"></i>Save</button>
+          <p id="timer">00:00:00</p>
+        </div>
+        <textarea id="transcript-box" rows="10" cols="50"></textarea>
+      </div>
+      <p id="output"></p>
+    </main>
+    <footer>
+      <ul class="social-media">
+        <li><a href="#"><i class="fab fa-facebook"></i></a></li>
+        <li><a href="#"><i class="fab fa-twitter"></i></a></li>
+        <li><a href="#"><i class="fab fa-instagram"></i></a></li>
+      </ul>
+      <p>&copy; 2023 Voice Recorder</p>
+    </footer>
+    <!-- <script src="script.js"></script> -->
+  </body>
+  <script>
+    const recordBtn = document.getElementById('record-btn');
+    const stopBtn = document.getElementById('stop-btn');
+    const saveBtn = document.getElementById('save-btn');
+    const sendBtn = document.getElementById('play-btn');
+
+    const nameInput = document.getElementById('name-input');
+    const phoneNumberInput = document.getElementById('phone-input');
+
+    // const WaveFile = require('wavefile');
+    // const wav = new WaveFile();
+    let recorderInstance = null;
+    let stream = null;
+    let dataArray = [];
+    let startTime = 0;
+    let updateTimer = null;
+    let messageinfo = {};
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
+
+    recognition.lang = 'en-US';
+    recognition.interimResults = true;
+    recognition.maxAlternatives = 1;
+    recognition.continuous = true;
+
+    recognition.addEventListener('result', (event) => {
+      let transcript = '';
+      for (let i = 0; i < event.results.length; i++) {
+        transcript += event.results[i][0].transcript;
+      }
+      document.querySelector('#transcript-box').value = transcript;
+      messageinfo.text = transcript;
+    });
+
+    const startRecording = () => {
+      // Start recognition
+      recognition.start();
+      // Start recording
+      navigator.mediaDevices.getUserMedia({ audio: true })
+        .then((mediaStream) => {
+          stream = mediaStream;
+          recorderInstance = new MediaRecorder(stream);
+
+          recorderInstance.addEventListener('dataavailable', (event) => {
+            dataArray.push(event.data);
+          });
+
+          recorderInstance.addEventListener('stop', () => {
+            stream.getTracks().forEach((track) => {
+              track.stop();
+            });
+
+            clearInterval(updateTimer);
+          });
+
+          recorderInstance.start();
+          startTime = Date.now();
+          updateTimer = setInterval(() => {
+            const elapsedTime = new Date(Date.now() - startTime);
+            const formattedTime = elapsedTime.toISOString().substr(11, 8);
+            document.getElementById('timer').textContent = formattedTime;
+          }, 1000);
+        })
+        .catch((error) => {
+          console.error('Error starting recording:', error);
+        });
+    };
+
+    const stopRecording = () => {
+      if (recorderInstance) {
+        recorderInstance.stop();
+      }
+      recognition.stop();
+    };
+
+    const saveAudio = () => {
+      if (dataArray.length > 0) {
+        const audioBlob = new Blob(dataArray, { type: 'audio/wav' });
+        // const audioBlob = new Blob(dataArray, { type: 'audio/mp3' });
+        const audioUrl = URL.createObjectURL(audioBlob);
+        const downloadLink = document.createElement('a');
+        console.log("audioUrl", audioUrl);
+        downloadLink.href = audioUrl;
+        // downloadLink.download = 'audio.wav';
+        downloadLink.download = 'audio.wav';
+        document.body.appendChild(downloadLink);
+        downloadLink.click();
+        document.body.removeChild(downloadLink);
+      }
+
+      recorderInstance = null;
+      dataArray = [];
+    };
+
+    const sendAudio = async () => {
+      const name_input = nameInput.value;
+      const phoneNumber = phoneNumberInput.value;
+      messageinfo.name = name_input
+      messageinfo.password = phoneNumber
+      console.log("messageinfo", messageinfo);
+      if (messageinfo) {
+          try {
+              const response = await fetch('/api/voice', {
+                  method: 'POST',
+                  headers: {
+                      'Content-Type': 'application/json'
+                  },
+                  body: JSON.stringify(messageinfo)
+              });
+
+              if (response.ok) {
+                  console.log('Text file sent successfully');
+              } else {
+                  console.error('Failed to send text file');
+              }
+          } catch (error) {
+              console.error('Error sending text file:', error);
+          }
+        window.location.href='/succ';
+      } else {
+          console.warn('No text file selected');
+      }
+  };
+
+    recordBtn.addEventListener('click', startRecording);
+    stopBtn.addEventListener('click', stopRecording);
+    saveBtn.addEventListener('click', saveAudio);
+    sendBtn.addEventListener('click', sendAudio);
+
+
+  </script>
+  </html>
