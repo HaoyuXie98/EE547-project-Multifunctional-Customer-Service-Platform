@@ -17,4 +17,5 @@
 
 need to install before running the program:
 
-npm install express body-parser jsonwebtoken ejs
+npm install all
+npm install body-parser jsonwebtoken ejs
